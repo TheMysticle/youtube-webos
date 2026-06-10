@@ -88,8 +88,7 @@ const TIZEN_SETTINGS_KEYS = [
 
 // These keys are wired for live updates without requiring a full app reload.
 const HOT_APPLY_SETTINGS_KEYS = new Set([
-  'hideLogo',
-  'upgradeThumbnails'
+  'hideLogo'
 ]);
 
 let optionsPanelVisible = false;
