@@ -127,9 +127,8 @@ export async function runTizenLoader() {
     }
     
     // Inject Visitor ID and Auth Token to fix 403 on youtubei endpoints when cookies aren't sent
-    const isFileOrigin = window.location.href.startsWith('file://');
     const isOldTizen = navigator.userAgent.includes('Tizen 5.') || navigator.userAgent.includes('Tizen 4.') || navigator.userAgent.includes('Tizen 3.');
-    const needsProxy = isFileOrigin || isOldTizen;
+    const needsProxy = isOldTizen;
 
     if (needsProxy && !(window as any).ytaf_proxy_warned) {
       (window as any).ytaf_proxy_warned = true;
@@ -203,9 +202,8 @@ export async function runTizenLoader() {
       url = urlStr;
     }
     
-    const isFileOrigin = window.location.href.startsWith('file://');
     const isOldTizen = navigator.userAgent.includes('Tizen 5.') || navigator.userAgent.includes('Tizen 4.') || navigator.userAgent.includes('Tizen 3.');
-    const needsProxy = isFileOrigin || isOldTizen;
+    const needsProxy = isOldTizen;
 
     // PROXY youtubei requests through PC to strip Origin: file:// header
     if (needsProxy && urlStr && urlStr.includes('/youtubei/')) {
