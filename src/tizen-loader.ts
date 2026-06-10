@@ -12,6 +12,79 @@ declare global {
 
 import { PROXY_IP } from './proxy-config';
 
+function showProxyError() {
+  if ((window as any).proxyErrorShown) return;
+  (window as any).proxyErrorShown = true;
+  
+  const inject = () => {
+    if (!document.body) {
+      setTimeout(inject, 500);
+      return;
+    }
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 9999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'YouTube Noto', Roboto, Arial, sans-serif;
+    `;
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      background: #181818;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 40px;
+      max-width: 500px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+      color: #fff;
+    `;
+    modal.innerHTML = `
+      <h1 style="margin: 0 0 20px 0; font-size: 26px; font-weight: 500; color: #ff4e45;">Proxy Unreachable</h1>
+      <p style="font-size: 16px; line-height: 1.5; margin-bottom: 24px; color: #aaa;">
+        This older TV requires a proxy server to bypass Google's API firewall. We couldn't connect to it!
+      </p>
+      <div style="background: #212121; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: left; border: 1px solid rgba(255,255,255,0.05);">
+        <p style="margin: 0 0 12px 0; font-size: 15px; color: #ddd;">1. Run the Node.js proxy server on your PC.</p>
+        <p style="margin: 0; font-size: 15px; color: #ddd;">2. Ensure your PC's IP matches <strong>${PROXY_IP}</strong>.</p>
+      </div>
+      <p style="font-size: 14px; color: #888; margin-bottom: 30px; line-height: 1.4;">
+        (You can find the proxy server script and more info on the project's GitHub page)
+      </p>
+      <button id="yt-proxy-dismiss" style="
+        background: #f1f1f1;
+        color: #0f0f0f;
+        border: none;
+        border-radius: 18px;
+        padding: 10px 24px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        outline: none;
+      ">Understood</button>
+    `;
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const btn = overlay.querySelector('#yt-proxy-dismiss') as HTMLButtonElement;
+    if (btn) {
+      btn.focus();
+      btn.style.border = '2px solid transparent';
+      btn.onfocus = () => btn.style.border = '2px solid #3ea6ff';
+      btn.onblur = () => btn.style.border = '2px solid transparent';
+      btn.onclick = () => overlay.remove();
+      btn.onkeydown = (e) => {
+        if (e.key === 'Enter') overlay.remove();
+      };
+    }
+  };
+  inject();
+}
+
 export async function runTizenLoader() {
   console.info('[TizenLoader] Starting loader...');
 
@@ -230,6 +303,9 @@ export async function runTizenLoader() {
     });
     this.addEventListener('error', () => {
       logToDebug(`[XHR-ERROR] ${urlStr}`);
+      if (needsProxy && urlStr && urlStr.includes(PROXY_IP)) {
+        showProxyError();
+      }
     });
 
     return originalOpen.call(this, method, url, async, user, password);
