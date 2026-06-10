@@ -103,8 +103,9 @@ function setPlaybackQuality(this: PlayerManager, _: unknown) {
   let attemptsLeft = 8;
   const enforceTimer = window.setInterval(() => {
     attemptsLeft -= 1;
-    const curr = this.player.getPlaybackQualityLabel();
-    if (curr === targetQuality || attemptsLeft <= 0) {
+    const currLabel = this.player.getPlaybackQualityLabel();
+    const currQuality = (this.player as any).getPlaybackQuality?.();
+    if (currLabel === maxData?.qualityLabel || currQuality === targetQuality || attemptsLeft <= 0) {
       clearInterval(enforceTimer);
       return;
     }
