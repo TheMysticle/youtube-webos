@@ -33,8 +33,6 @@
 
 Some features are currently being debugged or adapted for the Tizen platform:
 - **Timeline Scrubbing Thumbnails**: Thumbnails occasionally appear black or fail to render during timeline scrubbing.
-- **Clock Visibility**: The on-screen clock overlay may hide inconsistently depending on the player focus state.
-- **Debug Watermark**: The `yt-debug-watermark` overlay periodically appears on screen; currently utilizing aggressive mutation observers to hide it.
 
 ---
 
