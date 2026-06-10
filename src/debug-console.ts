@@ -30,6 +30,7 @@ class OnScreenConsole {
         z-index: 9999999;
         pointer-events: none;
         box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        display: none;
       `;
       document.body.appendChild(this.container);
       this.log('=== YTAF On-Screen Debug Console Initialized ===');

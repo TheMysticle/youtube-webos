@@ -25,6 +25,7 @@
 > [!NOTE]
 > Press the 🟩 **Green** button on your remote to access the configuration screen.
 > Press the 🟨 **Yellow** button on your remote to toggle the UI Overlay Inspector.
+> Press the 🟥 **Red** button on your remote to toggle the on-screen Debug Console.
 
 ---
 
