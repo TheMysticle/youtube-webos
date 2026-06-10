@@ -75,6 +75,21 @@ function parseCSSUrl(value: string): URL | undefined {
 }
 
 async function upgradeBgImg(element: HTMLElement) {
+  // Watch page uses storyboard/preview assets for scrubbing.
+  // Rewriting these can break preview rendering on Tizen.
+  if (
+    document.body?.classList.contains('WEB_PAGE_TYPE_WATCH') || 
+    window.location.hash.includes('/watch') ||
+    window.location.pathname.includes('/watch') ||
+    element.closest('ytlr-watch-default') ||
+    element.closest('.ytp-storyboard') || 
+    element.closest('.ytp-tooltip') || 
+    element.closest('ytlr-preview-thumbnail') ||
+    element.closest('[idomkey="preview"]')
+  ) {
+    return;
+  }
+
   const style = element.style;
   const old = parseCSSUrl(style.backgroundImage);
   if (!old) return;
@@ -138,19 +153,27 @@ const obs = new MutationObserver((mutations) => {
 });
 
 function enableObserver() {
-  obs.observe(document.body, {
-    subtree: true,
-    childList: true,
-    attributes: true,
-    attributeFilter: ['style'],
-    attributeOldValue: true
-  });
+  const startObs = () => {
+    obs.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['style'],
+      attributeOldValue: true
+    });
+  };
+
+  if (document.body) {
+    startObs();
+  } else {
+    document.addEventListener('DOMContentLoaded', startObs);
+  }
 }
 
 import { configRead, configAddChangeListener } from './config';
 
 if (configRead('upgradeThumbnails')) enableObserver();
 
-configAddChangeListener('upgradeThumbnails', (value) =>
-  value ? enableObserver() : obs.disconnect()
+configAddChangeListener('upgradeThumbnails', (evt) =>
+  evt.detail.newValue ? enableObserver() : obs.disconnect()
 );

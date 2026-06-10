@@ -7,8 +7,12 @@
   "scripts": {
     "build": "webpack --mode=production",
     "build:dev": "webpack --mode=development",
+    "build:tizen": "webpack --mode=production && cp assets/tizen/config.xml dist/config.xml",
     "package": "ares-package -n dist",
+    "package:tizen": "/home/mysticle/.tizen-extension-platform/server/sdktools/data/tools/ide/bin/tizen package -t wgt -s MysticleTV -o /home/mysticle/youtube-webos/YouTubeAdFree.wgt -- dist && (mv \"/home/mysticle/youtube-webos/YouTubeAdFree.wgt/YouTube AdFree.wgt\" \"/home/mysticle/youtube-webos/YouTubeAdFree.wgt/YouTubeAdFree.wgt\" 2>/dev/null || true)",
     "deploy": "node tools/deploy.js",
+    "deploy:tizen": "/home/mysticle/.tizen-extension-platform/server/sdktools/data/tools/ide/bin/tizen install -n /home/mysticle/youtube-webos/YouTubeAdFree.wgt/YouTubeAdFree.wgt -s 192.168.1.116:26101",
+    "run:tizen": "/home/mysticle/.tizen-extension-platform/server/sdktools/data/tools/ide/bin/tizen run -p ytadfree99.YouTubeAdFree -s 192.168.1.116:26101",
     "inspect": "ares-inspect youtube.leanback.v4",
     "launch": "ares-launch youtube.leanback.v4",
     "manifest": "node tools/gen-manifest.cjs youtube.leanback.v4.manifest.json",
@@ -67,17 +71,5 @@
     "webpack": "^5.106.1",
     "webpack-cli": "^7.0.2",
     "which-builtin-type": "^1.2.1"
-  },
-  "devEngines": {
-    "runtime": {
-      "name": "node",
-      "version": ">=22",
-      "onFail": "download"
-    },
-    "packageManager": {
-      "name": "pnpm",
-      "onFail": "error"
-    }
-  },
-  "packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319"
+  }
 }

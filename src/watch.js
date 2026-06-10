@@ -4,24 +4,47 @@ import { requireElement } from './player_api/helpers';
 
 class Watch {
   #watch;
-  #timer;
+  #mountTimer;
   #attrChanges;
   #PLAYER_SELECTOR = 'ytlr-watch-default';
+  #isVisible = true;
 
   constructor() {
-    this.createElement();
-    this.startClock();
+    this.init();
     this.playerEvents();
   }
 
-  createElement() {
-    this.#watch = document.createElement('div');
-    this.#watch.className = 'webOs-watch';
-    document.body.appendChild(this.#watch);
-  }
+  init() {
+    if (typeof document === 'undefined') return;
 
-  startClock() {
-    const nextSeg = (60 - new Date().getSeconds()) * 1000;
+    const createDiv = () => {
+      if (document.getElementById('ytaf-clock-widget')) return;
+      this.#watch = document.createElement('div');
+      this.#watch.id = 'ytaf-clock-widget';
+      this.#watch.style.cssText = `
+        position: fixed;
+        right: 0;
+        top: 0;
+        margin: 1rem 2rem;
+        background-color: rgba(0, 0, 0, 0.65);
+        border-radius: 0.5rem;
+        padding: 0.4rem;
+        font-size: 1.2rem;
+        color: #fff;
+        z-index: 2147483647;
+        pointer-events: none;
+        letter-spacing: 0.05rem;
+        font-family: sans-serif;
+        display: ${this.#isVisible ? 'block' : 'none'};
+      `;
+      document.body.appendChild(this.#watch);
+    };
+
+    if (document.body) {
+      createDiv();
+    } else {
+      document.addEventListener('DOMContentLoaded', createDiv);
+    }
 
     const formatter = new Intl.DateTimeFormat(navigator.language, {
       hour: 'numeric',
@@ -29,46 +52,55 @@ class Watch {
     });
 
     const setTime = () => {
-      this.#watch.innerText = formatter.format(new Date());
+      if (this.#watch) {
+        const now = new Date();
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        this.#watch.innerText = `${hours}:${minutes}`;
+      }
     };
 
     setTime();
-    setTimeout(() => {
+    // Update every 10 seconds to ensure we don't miss the minute change
+    this.#mountTimer = setInterval(() => {
       setTime();
-      this.#timer = setInterval(setTime, 60000);
-    }, nextSeg);
-  }
-
-  playerAppear(video) {
-    this.changeVisibility(video);
-    this.playerObserver(video);
+      if (document.body && (!this.#watch || this.#watch.parentElement !== document.body)) {
+        createDiv();
+        setTime();
+      }
+    }, 10000);
   }
 
   changeVisibility(video) {
     const focused = video.getAttribute('hybridnavfocusable') === 'true';
-    this.#watch.style.display = focused ? 'none' : 'block';
+    this.#isVisible = !focused;
+    if (this.#watch) {
+      this.#watch.style.display = this.#isVisible ? 'block' : 'none';
+    }
   }
 
   async playerEvents() {
     const player = await requireElement(this.#PLAYER_SELECTOR, HTMLElement);
-    this.playerAppear(player);
-  }
-
-  playerObserver(node) {
+    this.changeVisibility(player);
+    
     this.#attrChanges = new MutationObserver(() => {
-      this.changeVisibility(node);
+      this.changeVisibility(player);
     });
 
-    this.#attrChanges.observe(node, {
+    this.#attrChanges.observe(player, {
       attributes: true,
       attributeFilter: ['hybridnavfocusable']
     });
   }
 
   destroy() {
-    clearInterval(this.#timer);
-    this.#watch?.remove();
-    this.#attrChanges?.disconnect();
+    clearInterval(this.#mountTimer);
+    if (this.#watch) {
+      this.#watch.remove();
+    }
+    if (this.#attrChanges) {
+      this.#attrChanges.disconnect();
+    }
   }
 }
 

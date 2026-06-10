@@ -3,9 +3,25 @@ const CONTENT_INTENT_REGEX = /^.+(?=Content)/g;
 export function extractLaunchParams() {
   if (window.launchParams) {
     return JSON.parse(window.launchParams);
-  } else {
-    return {};
+  } else if (window.tizen && window.tizen.application) {
+    try {
+      const reqAppControl = window.tizen.application.getCurrentApplication().getRequestedAppControl();
+      if (reqAppControl && reqAppControl.appControl) {
+        const appControl = reqAppControl.appControl;
+        const params = {};
+        if (appControl.data) {
+          appControl.data.forEach((item) => {
+            params[item.key] = item.value && item.value.length === 1 ? item.value[0] : item.value;
+          });
+        }
+        console.info('[TizenLoader] Extracted initial appcontrol params:', params);
+        return params;
+      }
+    } catch (e) {
+      console.error('Failed to extract Tizen launch params:', e);
+    }
   }
+  return {};
 }
 
 function getYTURL() {
@@ -85,7 +101,17 @@ export function handleLaunch(params) {
     }
   }
 
-  window.location.href = ytURL.toString();
+  if (window.tizen) {
+    if (window.tizenLoaderExecuted) {
+      console.info('[TizenLoader] Relaunched, updating hash:', ytURL.hash);
+      window.location.hash = ytURL.hash;
+    } else {
+      window.tizenInitialURL = ytURL.toString();
+      console.info('[TizenLoader] Initial launch URL saved:', window.tizenInitialURL);
+    }
+  } else {
+    window.location.href = ytURL.toString();
+  }
 }
 
 /**

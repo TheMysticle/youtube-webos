@@ -1,18 +1,18 @@
 .ytaf-ui-container {
-  position: absolute;
-  top: 10%;
-  left: 10%;
-  right: 10%;
-  bottom: 10%;
+  position: fixed !important;
+  top: 10% !important;
+  left: 10% !important;
+  right: 10% !important;
+  bottom: 10% !important;
 
-  background: rgba(18, 18, 18, 0.9);
-  backdrop-filter: blur(23px);
-  color: white;
-  border: 0.1rem solid rgb(52 52 52);
-  border-radius: 20px;
-  padding: 1em;
-  font-size: 1.4rem;
-  z-index: 1000;
+  background: rgba(18, 18, 18, 0.95) !important;
+  backdrop-filter: blur(23px) !important;
+  color: white !important;
+  border: 0.1rem solid rgb(52 52 52) !important;
+  border-radius: 20px !important;
+  padding: 1em !important;
+  font-size: 1.4rem !important;
+  z-index: 9999990 !important;
 }
 
 .ytaf-ui-container :focus {
@@ -37,24 +37,33 @@
 }
 
 .ytaf-notification-container {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  font-size: 16pt;
-  z-index: 1200;
+  position: fixed;
+  top: 5.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(90vw, 900px);
+  font-size: 18pt;
+  z-index: 2147483001;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .ytaf-notification-container .message {
-  background: rgba(0, 0, 0, 0.7);
+  background: linear-gradient(135deg, rgba(18, 18, 18, 0.97), rgba(33, 33, 33, 0.97));
   color: white;
-  padding: 1em;
-  margin: 0.5em;
-  transition: all 0.3s ease-in-out;
+  padding: 0.75em 1em;
+  margin: 0.35em 0;
+  transition: all 0.25s ease-in-out;
   opacity: 1;
-  line-height: 1;
-  border-right: 10px solid rgba(50, 255, 50, 0.3);
-  display: inline-block;
-  float: right;
+  line-height: 1.2;
+  border: 2px solid rgba(120, 255, 170, 0.55);
+  border-radius: 12px;
+  display: block;
+  min-width: 420px;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
 }
 
 .ytaf-notification-container .message-hidden {

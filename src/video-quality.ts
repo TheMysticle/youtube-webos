@@ -11,8 +11,56 @@ function shouldForce() {
 
 type EventMap = EventMapOf<PlayerManager>;
 
-function getMaxQualityLabel(player: PlayerManager['player']) {
-  return player.getAvailableQualityData()[0]?.qualityLabel;
+function isWatchContext() {
+  try {
+    const hash = window.location.hash.startsWith('#')
+      ? window.location.hash.substring(1)
+      : window.location.hash;
+    const url = new URL(hash || '/watch', window.location.href);
+    return url.pathname === '/watch';
+  } catch {
+    return window.location.hash.includes('/watch');
+  }
+}
+
+function qualityRank(label: string) {
+  const norm = String(label || '').toLowerCase();
+  const baseRanks: Record<string, number> = {
+    highres: 100,
+    hd2160: 90,
+    hd1440: 85,
+    hd1080: 80,
+    hd720: 70,
+    large: 60,
+    medium: 50,
+    small: 40,
+    tiny: 30,
+    auto: 1,
+  };
+
+  if (norm in baseRanks) return baseRanks[norm];
+
+  const numeric = Number.parseInt(norm, 10);
+  if (Number.isFinite(numeric)) return numeric;
+
+  return 0;
+}
+
+function getMaxQualityData(player: any) {
+  let items = player.getAvailableQualityData ? player.getAvailableQualityData() : [];
+  if (!items || !items.length) {
+    if (player.getAvailableQualityLevels) {
+      const levels = player.getAvailableQualityLevels() || [];
+      items = levels.map((l: string) => ({ quality: l, qualityLabel: l }));
+    }
+  }
+  if (!items || !items.length) return undefined;
+
+  const best = [...items].sort(
+    (a, b) => qualityRank(b?.qualityLabel ?? b?.quality ?? '') - qualityRank(a?.qualityLabel ?? a?.quality ?? '')
+  )[0];
+
+  return best;
 }
 
 function notifyPlaybackQuality(this: PlayerManager) {
@@ -21,23 +69,51 @@ function notifyPlaybackQuality(this: PlayerManager) {
   const player = this.player;
 
   const selected = player.getPlaybackQualityLabel();
-  const max = getMaxQualityLabel(player);
+  const maxData = getMaxQualityData(player);
 
-  showNotification(`${selected} selected (Max ${max})`, 3000);
+  showNotification(`${selected} selected (Max ${maxData?.qualityLabel || 'Unknown'})`, 3000);
 
   this.removeEventListener('playbackStart', notifyPlaybackQuality);
 }
 
 function setPlaybackQuality(this: PlayerManager, _: unknown) {
-  if (this.playerMode === PlayerMode.PREVIEW) return;
+  if (this.playerMode === PlayerMode.PREVIEW && !isWatchContext()) return;
 
   console.debug('[video-quality] setting playback quality');
   this.removeEventListener('playbackStart', setPlaybackQuality);
 
   const prevQuality = this.player.getPlaybackQualityLabel();
-  this.player.setPlaybackQualityRange('highres', 'highres');
+  const maxData = getMaxQualityData(this.player);
+  const maxQuality = maxData?.quality;
 
-  if (prevQuality === getMaxQualityLabel(this.player)) {
+  const playerAny = this.player as unknown as {
+    setPlaybackQuality?: (quality: string) => void;
+    setPlaybackQualityRange: (min: string, max: string, formatId?: string) => void;
+  };
+
+  if (maxQuality) {
+    playerAny.setPlaybackQualityRange(maxQuality, maxQuality);
+    playerAny.setPlaybackQuality?.(maxQuality);
+  } else {
+    playerAny.setPlaybackQualityRange('highres', 'highres');
+    playerAny.setPlaybackQuality?.('highres');
+  }
+
+  const targetQuality = maxQuality || 'highres';
+  let attemptsLeft = 8;
+  const enforceTimer = window.setInterval(() => {
+    attemptsLeft -= 1;
+    const curr = this.player.getPlaybackQualityLabel();
+    if (curr === targetQuality || attemptsLeft <= 0) {
+      clearInterval(enforceTimer);
+      return;
+    }
+
+    playerAny.setPlaybackQualityRange(targetQuality, targetQuality);
+    playerAny.setPlaybackQuality?.(targetQuality);
+  }, 700);
+
+  if (prevQuality === maxData?.qualityLabel) {
     notifyPlaybackQuality.call(this);
     return;
   }
