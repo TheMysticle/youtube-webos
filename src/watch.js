@@ -1,105 +1,87 @@
 import { configRead, configAddChangeListener } from './config';
-import './watch.css';
-import { requireElement } from './player_api/helpers';
 
 class Watch {
-  #watch;
-  #mountTimer;
-  #attrChanges;
-  #PLAYER_SELECTOR = 'ytlr-watch-default';
-  #isVisible = true;
-
   constructor() {
+    this._watch = null;
+    this._mountTimer = null;
     this.init();
-    this.playerEvents();
   }
 
   init() {
     if (typeof document === 'undefined') return;
 
     const createDiv = () => {
-      if (document.getElementById('ytaf-clock-widget')) return;
-      this.#watch = document.createElement('div');
-      this.#watch.id = 'ytaf-clock-widget';
-      this.#watch.style.cssText = `
+      const existing = document.getElementById('ytaf-clock-widget');
+      if (existing) {
+        this._watch = existing;
+        return;
+      }
+      this._watch = document.createElement('div');
+      this._watch.id = 'ytaf-clock-widget';
+      
+      const hideLogo = configRead('hideLogo');
+      
+      this._watch.style.cssText = `
         position: fixed;
-        right: 0;
-        top: 0;
-        margin: 1rem 2rem;
-        background-color: rgba(0, 0, 0, 0.65);
-        border-radius: 0.5rem;
-        padding: 0.4rem;
-        font-size: 1.2rem;
-        color: #fff;
+        top: 76px;
+        right: ${hideLogo ? '76px' : '360px'};
+        width: 120px;
+        height: 50px;
+        line-height: 50px;
+        text-align: center;
+        background-color: rgba(0, 0, 0, 0.85);
+        color: #ffffff;
+        font-family: 'Roboto', 'YouTube Noto', sans-serif;
+        font-size: 26px;
+        font-weight: bold;
+        border: 2px solid #333;
+        border-radius: 8px;
         z-index: 2147483647;
         pointer-events: none;
-        letter-spacing: 0.05rem;
-        font-family: sans-serif;
-        display: ${this.#isVisible ? 'block' : 'none'};
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+        display: block;
       `;
-      document.body.appendChild(this.#watch);
+      document.body.appendChild(this._watch);
     };
 
     if (document.body) {
       createDiv();
     } else {
       document.addEventListener('DOMContentLoaded', createDiv);
+      const checkTimer = setInterval(() => {
+        if (document.body) {
+          createDiv();
+          clearInterval(checkTimer);
+        }
+      }, 100);
     }
 
-    const formatter = new Intl.DateTimeFormat(navigator.language, {
-      hour: 'numeric',
-      minute: 'numeric'
-    });
+
 
     const setTime = () => {
-      if (this.#watch) {
+      if (this._watch) {
         const now = new Date();
         const hours = now.getHours().toString().padStart(2, '0');
         const minutes = now.getMinutes().toString().padStart(2, '0');
-        this.#watch.innerText = `${hours}:${minutes}`;
+        this._watch.innerText = `${hours}:${minutes}`;
       }
     };
 
     setTime();
-    // Update every 10 seconds to ensure we don't miss the minute change
-    this.#mountTimer = setInterval(() => {
+    this._mountTimer = setInterval(() => {
       setTime();
-      if (document.body && (!this.#watch || this.#watch.parentElement !== document.body)) {
+      if (document.body && (!this._watch || this._watch.parentElement !== document.body)) {
         createDiv();
         setTime();
       }
-    }, 10000);
-  }
-
-  changeVisibility(video) {
-    const focused = video.getAttribute('hybridnavfocusable') === 'true';
-    this.#isVisible = !focused;
-    if (this.#watch) {
-      this.#watch.style.display = this.#isVisible ? 'block' : 'none';
-    }
-  }
-
-  async playerEvents() {
-    const player = await requireElement(this.#PLAYER_SELECTOR, HTMLElement);
-    this.changeVisibility(player);
-    
-    this.#attrChanges = new MutationObserver(() => {
-      this.changeVisibility(player);
-    });
-
-    this.#attrChanges.observe(player, {
-      attributes: true,
-      attributeFilter: ['hybridnavfocusable']
-    });
+    }, 1000);
   }
 
   destroy() {
-    clearInterval(this.#mountTimer);
-    if (this.#watch) {
-      this.#watch.remove();
-    }
-    if (this.#attrChanges) {
-      this.#attrChanges.disconnect();
+    clearInterval(this._mountTimer);
+    if (this._watch) {
+      this._watch.remove();
+      this._watch = null;
     }
   }
 }

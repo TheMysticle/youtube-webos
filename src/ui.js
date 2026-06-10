@@ -235,6 +235,10 @@ function toggleSelectedOption() {
   if (!HOT_APPLY_SETTINGS_KEYS.has(key)) {
     optionsRequireReload = true;
   }
+  
+  if (key === 'hideLogo' && configRead('showWatch')) {
+    optionsRequireReload = true;
+  }
 
   renderOptionsPanel();
 }
