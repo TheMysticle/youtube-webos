@@ -266,7 +266,11 @@ function showOptionsPanel(visible) {
     if (optionsRequireReload) {
       showNotification('Applying settings...', 1200, 'green');
       setTimeout(() => {
-        window.location.reload();
+        if (window.ytaf_reloadApp) {
+          window.ytaf_reloadApp();
+        } else {
+          window.location.reload();
+        }
       }, 200);
     }
   }

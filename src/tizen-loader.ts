@@ -6,6 +6,7 @@ declare global {
     tizenLoaderExecuted?: boolean;
     tizenInitialURL?: string;
     ytaf_showOptionsPanel?: (visible?: boolean) => void;
+    ytaf_reloadApp?: () => void;
   }
 }
 
@@ -14,6 +15,26 @@ export async function runTizenLoader() {
 
   // 1. Setup global flags
   window.tizenLoaderExecuted = false;
+
+  window.ytaf_reloadApp = () => {
+    console.info('[TizenLoader] Reloading app context...');
+    const localAppPath = window.location.href.split('#')[0];
+    window.location.href = localAppPath;
+  };
+
+  try {
+    const originalReload = Location.prototype.reload;
+    Location.prototype.reload = function() {
+      console.info('[TizenLoader] Intercepted Location.prototype.reload()');
+      if (window.tizen) {
+        window.ytaf_reloadApp!();
+      } else {
+        originalReload.call(this);
+      }
+    };
+  } catch(e) {
+    console.warn('[TizenLoader] Failed to monkey-patch Location.prototype.reload', e);
+  }
 
   // 2. Monkey-patch fetch to intercept relative requests
   const originalFetch = window.fetch;
