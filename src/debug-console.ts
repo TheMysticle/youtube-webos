@@ -86,16 +86,29 @@ class OnScreenConsole {
     line.style.padding = '2px 0';
     const time = new Date().toLocaleTimeString();
     line.textContent = `[${time}] ${text}`;
-    this.container.appendChild(line);
     
+    // Remote log via image beacon
+    try {
+      const img = new Image();
+      img.src = `http://YOUR_PROXY_IP:3000/?log=${encodeURIComponent(`[${time}] ${text}`)}`;
+    } catch (e) {}
+
+    // Insert at the top
+    if (this.container.firstChild) {
+      this.container.insertBefore(line, this.container.firstChild);
+    } else {
+      this.container.appendChild(line);
+    }
+    
+    // Remove from the bottom if too many lines
     while (this.container.childNodes.length > 150) {
-      this.container.removeChild(this.container.firstChild!);
+      this.container.removeChild(this.container.lastChild!);
     }
 
     // Defer scroll to next event loop tick to ensure layout update completes
     setTimeout(() => {
       if (this.container) {
-        this.container.scrollTop = this.container.scrollHeight;
+        this.container.scrollTop = 0; // scroll to top instead of bottom
       }
     }, 50);
   }

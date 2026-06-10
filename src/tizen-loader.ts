@@ -36,6 +36,47 @@ export async function runTizenLoader() {
     console.warn('[TizenLoader] Failed to monkey-patch Location.prototype.reload', e);
   }
 
+  // Helper to log to debug console safely
+  const logToDebug = (msg: string) => {
+    if ((window as any).debugConsole) {
+      (window as any).debugConsole.log(msg);
+    } else {
+      console.debug(msg);
+    }
+  };
+
+  // Polyfill document.cookie for file:// protocol on older Tizen WebKit engines
+  if (window.location.protocol === 'file:') {
+    try {
+      let cookieStore = '';
+      // Try to load from localStorage if available
+      try { cookieStore = window.localStorage.getItem('ytaf_cookie_polyfill') || ''; } catch (e) {}
+      
+      Object.defineProperty(document, 'cookie', {
+        get() {
+          return cookieStore;
+        },
+        set(value) {
+          if (!value) return;
+          const newCookie = value.split(';')[0];
+          const newKey = newCookie.split('=')[0].trim();
+          
+          let cookies = cookieStore ? cookieStore.split('; ') : [];
+          // Remove old cookie with same key
+          cookies = cookies.filter(c => c.split('=')[0].trim() !== newKey);
+          cookies.push(newCookie.trim());
+          
+          cookieStore = cookies.join('; ');
+          try { window.localStorage.setItem('ytaf_cookie_polyfill', cookieStore); } catch (e) {}
+        },
+        configurable: true
+      });
+      logToDebug('[TizenLoader] Polyfilled document.cookie');
+    } catch (e) {
+      logToDebug('[TizenLoader] Failed to polyfill document.cookie: ' + e);
+    }
+  }
+
   // 2. Monkey-patch fetch to intercept relative requests
   const originalFetch = window.fetch;
   window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -47,6 +88,22 @@ export async function runTizenLoader() {
     } else if (input && typeof input === 'object' && 'url' in input) {
       urlStr = (input as any).url;
     }
+    
+    // Fix malformed URLs caused by YouTube JS reading window.location.hostname on file://
+    if (urlStr.startsWith('https:///')) {
+      urlStr = urlStr.replace('https:///', 'https://www.youtube.com/');
+    }
+    if (urlStr.startsWith('http:///')) {
+      urlStr = urlStr.replace('http:///', 'http://www.youtube.com/');
+    }
+    
+    // Fix URL-encoded malformed URLs appended to file://
+    if (urlStr.match(/^file:\/\/https(%3a|%3A)\/\/\//i)) {
+      urlStr = urlStr.replace(/^file:\/\/https(%3a|%3A)\/\/\//i, 'https://www.youtube.com/');
+    }
+    if (urlStr.match(/^file:\/\/http(%3a|%3A)\/\/\//i)) {
+      urlStr = urlStr.replace(/^file:\/\/http(%3a|%3A)\/\/\//i, 'http://www.youtube.com/');
+    }
 
     if (
       urlStr &&
@@ -56,29 +113,79 @@ export async function runTizenLoader() {
       !urlStr.startsWith('data:')
     ) {
       const newUrl = new URL(urlStr, 'https://www.youtube.com');
-      console.debug('[TizenLoader] fetch redirect:', urlStr, '->', newUrl.toString());
+      logToDebug(`[FETCH-REDIR] ${urlStr} -> ${newUrl.toString()}`);
       if (typeof input === 'string') {
         input = newUrl.toString();
       } else if (input instanceof URL) {
         input = newUrl;
       } else if (input && typeof input === 'object' && 'url' in input) {
-        input = new Request(newUrl.toString(), input as any);
+        (input as any).url = newUrl.toString();
+      }
+      urlStr = newUrl.toString();
+    }
+    
+    // Inject Visitor ID and Auth Token to fix 403 on youtubei endpoints when cookies aren't sent
+    const isFileOrigin = window.location.href.startsWith('file://');
+    const isOldTizen = navigator.userAgent.includes('Tizen 5.') || navigator.userAgent.includes('Tizen 4.') || navigator.userAgent.includes('Tizen 3.');
+    const needsProxy = isFileOrigin || isOldTizen;
+
+    if (needsProxy && !(window as any).ytaf_proxy_warned) {
+      (window as any).ytaf_proxy_warned = true;
+      const warnTimer = setInterval(() => {
+        if (document.body) {
+          clearInterval(warnTimer);
+          const warnDiv = document.createElement('div');
+          warnDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(255, 165, 0, 0.9); color: black; padding: 12px 24px; border-radius: 12px; z-index: 2147483647; font-family: sans-serif; font-weight: bold; font-size: 18px; pointer-events: none;';
+          warnDiv.innerText = 'YTAF: Running in Proxy Mode (Older Tizen detected)';
+          document.body.appendChild(warnDiv);
+          setTimeout(() => {
+            warnDiv.style.transition = 'opacity 1s';
+            warnDiv.style.opacity = '0';
+            setTimeout(() => warnDiv.remove(), 1000);
+          }, 8000);
+        }
+      }, 500);
+    }
+
+    if (urlStr && urlStr.includes('/youtubei/')) {
+      if (needsProxy) {
+        // PROXY the request through the PC to strip the Origin: file:// header
+        const targetUrl = encodeURIComponent(urlStr.startsWith('http') ? urlStr : 'https://www.youtube.com' + urlStr);
+        urlStr = `http://YOUR_PROXY_IP:3000/proxy?url=${targetUrl}`;
+        logToDebug(`[PROXY-FETCH] ${urlStr}`);
       }
     }
+
     return originalFetch.call(this, input, init);
   };
 
-  // 3. Monkey-patch XMLHttpRequest.open to intercept relative requests
-  const originalOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function (
-    this: XMLHttpRequest,
+  // 3. Monkey-patch XMLHttpRequest to intercept relative requests
+  const originalOpen = window.XMLHttpRequest.prototype.open;
+  window.XMLHttpRequest.prototype.open = function (
     method: string,
     url: string | URL,
-    async?: boolean,
+    async: boolean = true,
     user?: string | null,
     password?: string | null
   ) {
     let urlStr = typeof url === 'string' ? url : url.toString();
+    
+    // Fix malformed URLs caused by YouTube JS reading window.location.hostname on file://
+    if (urlStr.startsWith('https:///')) {
+      urlStr = urlStr.replace('https:///', 'https://www.youtube.com/');
+    }
+    if (urlStr.startsWith('http:///')) {
+      urlStr = urlStr.replace('http:///', 'http://www.youtube.com/');
+    }
+    
+    // Fix URL-encoded malformed URLs appended to file://
+    if (urlStr.match(/^file:\/\/https(%3a|%3A)\/\/\//i)) {
+      urlStr = urlStr.replace(/^file:\/\/https(%3a|%3A)\/\/\//i, 'https://www.youtube.com/');
+    }
+    if (urlStr.match(/^file:\/\/http(%3a|%3A)\/\/\//i)) {
+      urlStr = urlStr.replace(/^file:\/\/http(%3a|%3A)\/\/\//i, 'http://www.youtube.com/');
+    }
+
     if (
       urlStr &&
       !urlStr.startsWith('http://') &&
@@ -87,10 +194,46 @@ export async function runTizenLoader() {
       !urlStr.startsWith('data:')
     ) {
       const newUrl = new URL(urlStr, 'https://www.youtube.com');
+      logToDebug(`[XHR-REDIR] ${method} ${urlStr} -> ${newUrl.toString()}`);
       url = newUrl.toString();
+    } else {
+      logToDebug(`[XHR] ${method} ${urlStr}`);
+      url = urlStr;
     }
-    return originalOpen.call(this, method, url, async ?? true, user, password);
-  } as any;
+    
+    const isFileOrigin = window.location.href.startsWith('file://');
+    const isOldTizen = navigator.userAgent.includes('Tizen 5.') || navigator.userAgent.includes('Tizen 4.') || navigator.userAgent.includes('Tizen 3.');
+    const needsProxy = isFileOrigin || isOldTizen;
+
+    // PROXY youtubei requests through PC to strip Origin: file:// header
+    if (needsProxy && urlStr && urlStr.includes('/youtubei/')) {
+      const targetUrl = encodeURIComponent(urlStr.startsWith('http') ? urlStr : 'https://www.youtube.com' + urlStr);
+      urlStr = `http://YOUR_PROXY_IP:3000/proxy?url=${targetUrl}`;
+      url = urlStr;
+      logToDebug(`[PROXY-XHR] ${urlStr}`);
+    }
+
+    (this as any)._urlStr = urlStr;
+    
+    (this as any)._urlStr = urlStr;
+    
+    // Log failures
+    this.addEventListener('load', () => {
+      if (this.status >= 400) {
+        logToDebug(`[XHR-FAIL] ${this.status} ${urlStr}`);
+        try {
+          if (this.responseText && this.responseText.length < 1000) {
+            logToDebug(`[XHR-FAIL-BODY] ${this.responseText}`);
+          }
+        } catch (e) {}
+      }
+    });
+    this.addEventListener('error', () => {
+      logToDebug(`[XHR-ERROR] ${urlStr}`);
+    });
+
+    return originalOpen.call(this, method, url, async, user, password);
+  };
 
   // 4. Monkey-patch Document.prototype.createElement to intercept relative script/image/video URLs
   const originalCreateElement = Document.prototype.createElement;

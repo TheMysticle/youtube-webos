@@ -256,6 +256,7 @@ class SponsorBlockHandler {
     // and, in worst case, perform a skip at negative interval (immediately)...
     const nextSegments = this.segments.filter(
       (seg) =>
+        !seg.skipped &&
         seg.segment[0] > this.video.currentTime - 0.3 &&
         seg.segment[1] > this.video.currentTime - 0.3
     );
@@ -295,10 +296,14 @@ class SponsorBlockHandler {
         const skipName = barTypes[segment.category]?.name || segment.category;
         console.debug(this.videoID, 'Skipping', segment);
         showNotification(`Skipped ${skipName}`, 2000, 'green');
+        
+        // Prevent infinite loops when currentTime updates asynchronously
+        segment.skipped = true;
+        
         this.video.currentTime = end;
         this.scheduleSkip();
       },
-      (start - this.video.currentTime) * 1000
+      Math.max(0, (start - this.video.currentTime) * 1000)
     );
   }
 

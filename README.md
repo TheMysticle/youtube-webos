@@ -29,10 +29,30 @@
 
 ---
 
+## Older Tizen Support (CORS Proxy)
+
+Older Tizen TVs (Tizen 3.0 to 5.5) host local apps over the `file://` protocol. Google's Web Application Firewall (WAF) strictly blocks `youtubei` API requests originating from `file://` origins with a 403 Forbidden error, preventing login and video playback.
+
+To circumvent this, the app includes a fallback proxy specifically for older models.
+
+**How to use the Proxy:**
+1. Start the proxy server on your development machine by running:
+   ```bash
+   node log-server.cjs
+   ```
+2. The proxy server acts as an intermediary, intercepting blocked API calls and transparently stripping the restricted `Origin: file://` and `Referer` headers before forwarding them to YouTube.
+3. The app automatically detects if you are on an older Tizen TV or a `file://` endpoint and will route traffic through your PC's IP address (configured as `YOUR_PROXY_IP:3000` in the source code).
+4. An orange notification overlay will appear on the TV during boot if the proxy is active.
+
+*Note: Newer Tizen TVs (Tizen 6.0+) utilize proper local web origins and do not require the proxy. The app will automatically bypass the proxy on these newer models.*
+
+---
+
 ## Known Issues (Not Working)
 
 Some features are currently being debugged or adapted for the Tizen platform:
 - **Timeline Scrubbing Thumbnails**: Thumbnails occasionally appear black or fail to render during timeline scrubbing.
+- **Clock Widget**: The clock overlay is currently not rendering on the screen.
 
 ---
 
