@@ -101,8 +101,38 @@ export async function runTizenLoader() {
   const isOldTizenEarly = navigator.userAgent.includes('Tizen 5.') || navigator.userAgent.includes('Tizen 4.') || navigator.userAgent.includes('Tizen 3.');
   if (isOldTizenEarly) {
     console.info('[TizenLoader] Old Tizen detected, discovering proxy...');
+
+    // Show a search indicator while scanning the subnet
+    const searchOverlay = document.createElement('div');
+    searchOverlay.style.cssText = `
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #0f0f0f;
+      z-index: 9999999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'YouTube Noto', Roboto, Arial, sans-serif;
+    `;
+    searchOverlay.innerHTML = `
+      <div style="
+        width: 40px; height: 40px;
+        border: 3px solid rgba(255,255,255,0.1);
+        border-top-color: #3ea6ff;
+        border-radius: 50%;
+        animation: ytaf-spin 0.8s linear infinite;
+        margin-bottom: 24px;
+      "></div>
+      <p style="color: #aaa; font-size: 16px; margin: 0;">Searching for proxy server on your network...</p>
+      <style>@keyframes ytaf-spin { to { transform: rotate(360deg); } }</style>
+    `;
+    (document.body || document.documentElement).appendChild(searchOverlay);
+
     await discoverProxyIP();
     console.info(`[TizenLoader] Proxy IP resolved to: ${getProxyIP()}`);
+
+    searchOverlay.remove();
   }
 
   try {
