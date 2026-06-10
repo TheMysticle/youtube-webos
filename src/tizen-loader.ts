@@ -247,14 +247,14 @@ export async function runTizenLoader() {
         if (document.body) {
           clearInterval(warnTimer);
           const warnDiv = document.createElement('div');
-          warnDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(255, 165, 0, 0.9); color: black; padding: 12px 24px; border-radius: 12px; z-index: 2147483647; font-family: sans-serif; font-weight: bold; font-size: 18px; pointer-events: none;';
-          warnDiv.innerText = 'YTAF: Running in Proxy Mode (Older Tizen detected)';
+          warnDiv.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: rgba(30, 30, 30, 0.85); color: #aaa; padding: 8px 16px; border-radius: 8px; z-index: 2147483647; font-family: sans-serif; font-size: 13px; pointer-events: none; border: 1px solid rgba(255,255,255,0.08);';
+          warnDiv.innerText = 'Proxy mode active';
           document.body.appendChild(warnDiv);
           setTimeout(() => {
-            warnDiv.style.transition = 'opacity 1s';
+            warnDiv.style.transition = 'opacity 0.6s';
             warnDiv.style.opacity = '0';
-            setTimeout(() => warnDiv.remove(), 1000);
-          }, 8000);
+            setTimeout(() => warnDiv.remove(), 600);
+          }, 3000);
         }
       }, 500);
     }
