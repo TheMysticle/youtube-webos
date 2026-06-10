@@ -10,7 +10,7 @@ declare global {
   }
 }
 
-import { PROXY_IP } from './proxy-config';
+import { getProxyIP, discoverProxyIP } from './proxy-config';
 
 function showProxyError() {
   if ((window as any).proxyErrorShown) return;
@@ -46,11 +46,11 @@ function showProxyError() {
     modal.innerHTML = `
       <h1 style="margin: 0 0 20px 0; font-size: 26px; font-weight: 500; color: #ff4e45;">Proxy Unreachable</h1>
       <p style="font-size: 16px; line-height: 1.5; margin-bottom: 24px; color: #aaa;">
-        This older TV requires a proxy server to bypass Google's API firewall. We couldn't connect to it!
+        This older TV requires a proxy server to bypass Google's API firewall. We couldn't find one on your network!
       </p>
       <div style="background: #212121; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: left; border: 1px solid rgba(255,255,255,0.05);">
-        <p style="margin: 0 0 12px 0; font-size: 15px; color: #ddd;">1. Run the Node.js proxy server on your PC.</p>
-        <p style="margin: 0; font-size: 15px; color: #ddd;">2. Ensure your PC's IP matches <strong>${PROXY_IP}</strong>.</p>
+        <p style="margin: 0 0 12px 0; font-size: 15px; color: #ddd;">1. Run the Node.js proxy server on any PC on your local network.</p>
+        <p style="margin: 0; font-size: 15px; color: #ddd;">2. The app will auto-detect it on next launch.</p>
       </div>
       <p style="font-size: 14px; color: #888; margin-bottom: 30px; line-height: 1.4;">
         (You can find the proxy server script and more info on the project's GitHub page)
@@ -96,6 +96,14 @@ export async function runTizenLoader() {
     const localAppPath = window.location.href.split('#')[0];
     window.location.href = localAppPath;
   };
+
+  // Auto-discover proxy for older Tizen TVs before patching network calls
+  const isOldTizenEarly = navigator.userAgent.includes('Tizen 5.') || navigator.userAgent.includes('Tizen 4.') || navigator.userAgent.includes('Tizen 3.');
+  if (isOldTizenEarly) {
+    console.info('[TizenLoader] Old Tizen detected, discovering proxy...');
+    await discoverProxyIP();
+    console.info(`[TizenLoader] Proxy IP resolved to: ${getProxyIP()}`);
+  }
 
   try {
     const originalReload = Location.prototype.reload;
@@ -225,7 +233,7 @@ export async function runTizenLoader() {
       if (needsProxy) {
         // PROXY the request through the PC to strip the Origin: file:// header
         const targetUrl = encodeURIComponent(urlStr.startsWith('http') ? urlStr : 'https://www.youtube.com' + urlStr);
-        urlStr = `http://${PROXY_IP}:3000/proxy?url=${targetUrl}`;
+        urlStr = `http://${getProxyIP()}:3000/proxy?url=${targetUrl}`;
         logToDebug(`[PROXY-FETCH] ${urlStr}`);
       }
     }
@@ -281,7 +289,7 @@ export async function runTizenLoader() {
     // PROXY youtubei requests through PC to strip Origin: file:// header
     if (needsProxy && urlStr && urlStr.includes('/youtubei/')) {
       const targetUrl = encodeURIComponent(urlStr.startsWith('http') ? urlStr : 'https://www.youtube.com' + urlStr);
-      urlStr = `http://${PROXY_IP}:3000/proxy?url=${targetUrl}`;
+      urlStr = `http://${getProxyIP()}:3000/proxy?url=${targetUrl}`;
       url = urlStr;
       logToDebug(`[PROXY-XHR] ${urlStr}`);
     }
@@ -303,7 +311,7 @@ export async function runTizenLoader() {
     });
     this.addEventListener('error', () => {
       logToDebug(`[XHR-ERROR] ${urlStr}`);
-      if (needsProxy && urlStr && urlStr.includes(PROXY_IP)) {
+      if (needsProxy && urlStr && urlStr.includes(getProxyIP())) {
         showProxyError();
       }
     });

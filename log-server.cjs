@@ -30,6 +30,15 @@ const server = http.createServer((req, res) => {
     return res.end(pixel);
   }
 
+  // Ping endpoint for auto-discovery by TV apps
+  if (parsedUrl.pathname === '/ping') {
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    });
+    return res.end(JSON.stringify({ service: 'yt-proxy' }));
+  }
+
   // Proxy endpoint
   if (parsedUrl.pathname === '/proxy') {
     const targetUrlStr = parsedUrl.query.url;
