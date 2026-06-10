@@ -1,3 +1,5 @@
+import { PROXY_IP } from './proxy-config';
+
 // On-screen debug console for Tizen TV
 class OnScreenConsole {
   private container: HTMLDivElement | null = null;
@@ -90,7 +92,7 @@ class OnScreenConsole {
     // Remote log via image beacon
     try {
       const img = new Image();
-      img.src = `http://YOUR_PROXY_IP:3000/?log=${encodeURIComponent(`[${time}] ${text}`)}`;
+      img.src = `http://${PROXY_IP}:3000/?log=${encodeURIComponent(`[${time}] ${text}`)}`;
     } catch (e) {}
 
     // Insert at the top

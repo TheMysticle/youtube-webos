@@ -10,6 +10,8 @@ declare global {
   }
 }
 
+import { PROXY_IP } from './proxy-config';
+
 export async function runTizenLoader() {
   console.info('[TizenLoader] Starting loader...');
 
@@ -151,7 +153,7 @@ export async function runTizenLoader() {
       if (needsProxy) {
         // PROXY the request through the PC to strip the Origin: file:// header
         const targetUrl = encodeURIComponent(urlStr.startsWith('http') ? urlStr : 'https://www.youtube.com' + urlStr);
-        urlStr = `http://YOUR_PROXY_IP:3000/proxy?url=${targetUrl}`;
+        urlStr = `http://${PROXY_IP}:3000/proxy?url=${targetUrl}`;
         logToDebug(`[PROXY-FETCH] ${urlStr}`);
       }
     }
@@ -208,7 +210,7 @@ export async function runTizenLoader() {
     // PROXY youtubei requests through PC to strip Origin: file:// header
     if (needsProxy && urlStr && urlStr.includes('/youtubei/')) {
       const targetUrl = encodeURIComponent(urlStr.startsWith('http') ? urlStr : 'https://www.youtube.com' + urlStr);
-      urlStr = `http://YOUR_PROXY_IP:3000/proxy?url=${targetUrl}`;
+      urlStr = `http://${PROXY_IP}:3000/proxy?url=${targetUrl}`;
       url = urlStr;
       logToDebug(`[PROXY-XHR] ${urlStr}`);
     }
